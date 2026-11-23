@@ -1,0 +1,20 @@
+services:
+  foxdrop:
+    build: ./src
+    image: foxdrop:local
+    pull_policy: build
+    container_name: foxdrop
+    restart: unless-stopped
+    user: "1000:1500"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    environment:
+      FOXDROP_PUBLIC_URL: https://cdn.foxhearth.com
+      FOXDROP_BACKUP_URL: https://cdn.aallyn.net
+    ports:
+      - 10.8.0.253:8486:8080  # public downloads (cdn.foxhearth.com, cdn.aallyn.net)
+      - 10.8.0.253:8488:8081  # admin UI + API (frost.foxhearth.com, frost.aallyn.net; Authelia)
+    volumes:
+      - /mnt/nas/Files/aallyn/CDN:/files
+      - ./data:/data

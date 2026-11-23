@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FoxDrop</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #fff; --text: #16181d; --muted: #6b7280; --line: #e5e7eb;
+    --accent: #2563eb; --accent-soft: #eff4ff; --danger: #dc2626; --ok: #16a34a; --radius: 10px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0f1115; --panel: #171a21; --text: #e7e9ee; --muted: #9097a3; --line: #262b35;
+      --accent: #5b8cff; --accent-soft: #1a2340; --danger: #f05252; --ok: #34c56a; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
+  header { display: flex; align-items: center; justify-content: space-between; padding: 18px 28px; border-bottom: 1px solid var(--line); background: var(--panel); }
+  header h1 { font-size: 16px; margin: 0; font-weight: 650; letter-spacing: -.01em; }
+  header .user { color: var(--muted); font-size: 13px; }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px 28px 60px; display: grid; gap: 22px; }
+  section { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); }
+  section > h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0; padding: 14px 18px; border-bottom: 1px solid var(--line); font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+  .pad { padding: 18px; }
+  #drop { border: 2px dashed var(--line); border-radius: var(--radius); padding: 34px; text-align: center; cursor: pointer; transition: border-color .15s, background .15s; }
+  #drop.over { border-color: var(--accent); background: var(--accent-soft); }
+  #drop strong { display: block; font-size: 15px; margin-bottom: 4px; }
+  #drop span { color: var(--muted); }
+  .opts { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; align-items: end; }
+  label { display: grid; gap: 4px; font-size: 12px; color: var(--muted); }
+  input[type=text], select { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 7px; padding: 7px 10px; min-width: 220px; }
+  input[type=text]:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .prefix { display: flex; align-items: center; }
+  .prefix em { font-style: normal; color: var(--muted); background: var(--bg); border: 1px solid var(--line); border-right: 0; border-radius: 7px 0 0 7px; padding: 7px 8px; }
+  .prefix input { border-radius: 0 7px 7px 0; min-width: 200px; }
+  button { font: inherit; border: 1px solid var(--line); background: var(--panel); color: var(--text); padding: 6px 12px; border-radius: 7px; cursor: pointer; white-space: nowrap; }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.danger { color: var(--danger); }
+  button.danger:hover { border-color: var(--danger); }
+  button:disabled { opacity: .5; cursor: default; }
+  .uploads { display: grid; gap: 10px; margin-top: 14px; }
+  .up { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; font-size: 13px; }
+  .bar { grid-column: 1 / -1; height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+  .up.done .bar i { background: var(--ok); }
+  .up.fail .bar i { background: var(--danger); }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 10px 18px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  th { font-size: 12px; color: var(--muted); font-weight: 600; }
+  tr:last-child td { border-bottom: 0; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  td.actions { text-align: right; white-space: nowrap; }
+  td.actions button { margin-left: 6px; }
+  .path { word-break: break-all; }
+  .url a { color: var(--accent); text-decoration: none; word-break: break-all; }
+  .url a:hover { text-decoration: underline; }
+  .tag { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 99px; background: var(--bg); border: 1px solid var(--line); color: var(--muted); margin-left: 6px; }
+  .tag.bad { color: var(--danger); border-color: var(--danger); }
+  .muted { color: var(--muted); }
+  .empty { padding: 26px 18px; color: var(--muted); text-align: center; }
+  tr.off td:not(.actions) { opacity: .5; }
+  #filter { min-width: 200px; padding: 4px 9px; text-transform: none; letter-spacing: 0; font-size: 13px; }
+  #toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--text); color: var(--bg); padding: 9px 16px; border-radius: 8px; opacity: 0; transition: .2s; pointer-events: none; font-size: 13px; }
+  #toast.show { opacity: 1; transform: translateX(-50%); }
+  dialog { border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); color: var(--text); padding: 20px; width: min(460px, 92vw); }
+  dialog::backdrop { background: rgb(0 0 0 / .35); }
+  dialog h3 { margin: 0 0 4px; font-size: 15px; }
+  dialog .path { color: var(--muted); font-size: 13px; margin-bottom: 14px; }
+  dialog .row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
+  dialog label { margin-top: 10px; }
+  .err { color: var(--danger); font-size: 13px; min-height: 1.2em; margin-top: 8px; }
+  @media (max-width: 720px) { th.hide, td.hide { display: none; } main { padding: 16px; } th, td { padding: 9px 12px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>FoxDrop</h1>
+  <div class="user" id="user"></div>
+</header>
+<main>
+  <section>
+    <h2>Upload</h2>
+    <div class="pad">
+      <div id="drop" tabindex="0">
+        <strong>Drop files here or click to choose</strong>
+        <span>Each file gets a link as soon as it finishes uploading</span>
+        <input type="file" id="picker" multiple hidden>
+      </div>
+      <div class="opts">
+        <label>Custom URL (optional, one file at a time)
+          <div class="prefix"><em id="prefix">cdn/</em><input type="text" id="slug" placeholder="random if empty" autocomplete="off" spellcheck="false"></div>
+        </label>
+        <label>Expires
+          <select id="expiry">
+            <option value="0">Never</option>
+            <option value="1">1 hour</option>
+            <option value="24">1 day</option>
+            <option value="168">7 days</option>
+            <option value="720">30 days</option>
+          </select>
+        </label>
+      </div>
+      <div class="uploads" id="uploads"></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Links <span class="muted" id="linkcount"></span></h2>
+    <div id="links"></div>
+  </section>
+
+  <section>
+    <h2>Files in folder <input type="text" id="filter" placeholder="Filter"></h2>
+    <div id="files"></div>
+  </section>
+</main>
+
+<dialog id="share">
+  <form method="dialog" id="shareform">
+    <h3>Share file</h3>
+    <div class="path" id="sharepath"></div>
+    <label>Custom URL (optional)
+      <div class="prefix"><em class="pfx">cdn/</em><input type="text" id="shareslug" placeholder="random if empty" autocomplete="off" spellcheck="false"></div>
+    </label>
+    <label>Expires
+      <select id="shareexpiry">
+        <option value="0">Never</option>
+        <option value="1">1 hour</option>
+        <option value="24">1 day</option>
+        <option value="168">7 days</option>
+        <option value="720">30 days</option>
+      </select>
+    </label>
+    <div class="err" id="shareerr"></div>
+    <div class="row">
+      <button type="button" onclick="this.closest('dialog').close()">Cancel</button>
+      <button class="primary" id="sharego" value="ok">Create link</button>
+    </div>
+  </form>
+</dialog>
+
+<div id="toast"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const size = b => b == null ? '' : b < 1024 ? b + ' B' : (() => { const u = ['KB','MB','GB','TB']; let i = -1; do { b /= 1024; i++; } while (b >= 1024 && i < 3); return b.toFixed(b < 10 ? 1 : 0) + ' ' + u[i]; })();
+const when = t => t ? new Date(t * 1000).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '';
+let publicBase = '';
+
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 2200); }
+
+// Authelia's session can lapse; its redirect makes fetch fail opaquely, so reload to sign in again.
+async function api(path, opts = {}) {
+  let r;
+  try { r = await fetch(path, { redirect: 'manual', ...opts, headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) } }); }
+  catch { location.reload(); throw new Error('session'); }
+  if (r.type === 'opaqueredirect' || r.status === 401) { location.reload(); throw new Error('session'); }
+  if (!r.ok) { let m = r.statusText; try { m = (await r.json()).error || m; } catch {} throw new Error(m); }
+  return r.status === 204 ? null : r.json();
+}
+
+async function copy(text) {
+  try { await navigator.clipboard.writeText(text); toast('Link copied'); }
+  catch { prompt('Copy this link', text); }
+}
+
+let links = [], files = [];
+
+function renderLinks() {
+  $('#linkcount').textContent = links.length ? links.length : '';
+  if (!links.length) { $('#links').innerHTML = '<div class="empty">No links yet. Upload a file or share one from the folder below.</div>'; return; }
+  const now = Date.now() / 1000;
+  $('#links').innerHTML = `<table><thead><tr><th>Link</th><th class="hide">File</th><th class="num hide">Size</th><th class="num">Downloads</th><th class="hide">Expires</th><th></th></tr></thead><tbody>` +
+    links.map(l => {
+      const expired = l.expires && l.expires <= now;
+      const tags = (l.disabled ? '<span class="tag">disabled</span>' : '') + (expired ? '<span class="tag bad">expired</span>' : '') + (l.missing ? '<span class="tag bad">file missing</span>' : '');
+      return `<tr class="${l.disabled || expired ? 'off' : ''}">
+        <td class="url"><a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.url.replace(/^https?:\/\//, ''))}</a>${tags}</td>
+        <td class="path hide">${esc(l.path)}</td>
+        <td class="num hide">${size(l.size)}</td>
+        <td class="num" title="${l.last_download ? 'Last: ' + esc(when(l.last_download)) : 'Never downloaded'}">${l.downloads}</td>
+        <td class="hide muted">${l.expires ? esc(when(l.expires)) : 'Never'}</td>
+        <td class="actions">
+          <button data-copy="${esc(l.url)}">Copy</button>
+          ${l.backup_url ? `<button data-copy="${esc(l.backup_url)}" title="${esc(l.backup_url)}">Copy backup</button>` : ''}
+          <button data-open="${esc(l.url.replace(/\/([^\/]+)$/, '/info/$1'))}">Info</button>
+          <button data-toggle="${esc(l.slug)}" data-off="${l.disabled ? 1 : 0}">${l.disabled ? 'Enable' : 'Disable'}</button>
+          <button class="danger" data-del="${esc(l.slug)}">Delete</button>
+        </td></tr>`;
+    }).join('') + '</tbody></table>';
+}
+
+function renderFiles() {
+  const q = $('#filter').value.trim().toLowerCase();
+  const list = q ? files.filter(f => f.path.toLowerCase().includes(q)) : files;
+  if (!files.length) { $('#files').innerHTML = '<div class="empty">The folder is empty. Files copied into it over the network share show up here too.</div>'; return; }
+  if (!list.length) { $('#files').innerHTML = '<div class="empty">No files match.</div>'; return; }
+  $('#files').innerHTML = `<table><thead><tr><th>File</th><th class="num">Size</th><th class="hide">Modified</th><th></th></tr></thead><tbody>` +
+    list.map(f => `<tr>
+      <td class="path">${esc(f.path)}${f.links.length ? `<span class="tag">${f.links.length} link${f.links.length > 1 ? 's' : ''}</span>` : ''}</td>
+      <td class="num">${size(f.size)}</td>
+      <td class="hide muted">${esc(when(f.modified))}</td>
+      <td class="actions"><button class="primary" data-share="${esc(f.path)}">Share</button><button class="danger" data-rm="${esc(f.path)}">Delete</button></td>
+    </tr>`).join('') + '</tbody></table>';
+}
+
+async function refresh() {
+  try { [links, files] = await Promise.all([api('/api/links'), api('/api/files')]); }
+  catch (e) { if (e.message !== 'session') toast(e.message); return; }
+  renderLinks(); renderFiles();
+}
+
+async function makeLink(path, slug, hours) {
+  return api('/api/links', { method: 'POST', body: JSON.stringify({ path, slug: slug || null, expires_hours: +hours || null }) });
+}
+
+// ---- upload ----
+function uploadOne(file, slug, hours) {
+  const row = document.createElement('div');
+  row.className = 'up';
+  row.innerHTML = `<span class="path">${esc(file.name)}</span><span class="muted st">0%</span><div class="bar"><i></i></div>`;
+  $('#uploads').prepend(row);
+  const st = row.querySelector('.st'), bar = row.querySelector('i');
+  return new Promise(resolve => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/upload?name=' + encodeURIComponent(file.name));
+    const t0 = performance.now();
+    xhr.upload.onprogress = e => {
+      if (!e.lengthComputable) return;
+      const p = e.loaded / e.total, secs = (performance.now() - t0) / 1000;
+      bar.style.width = (p * 100).toFixed(1) + '%';
+      st.textContent = `${(p * 100).toFixed(0)}% · ${size(e.loaded)} of ${size(e.total)} · ${size(e.loaded / Math.max(secs, .1))}/s`;
+    };
+    const fail = msg => { row.classList.add('fail'); bar.style.width = '100%'; st.textContent = msg; resolve(); };
+    xhr.onerror = () => { if (xhr.status === 0) fail('Upload failed. If your sign-in expired, reload the page.'); };
+    xhr.onload = async () => {
+      if (xhr.status !== 200) { let m = `Upload failed (HTTP ${xhr.status})`; try { m = JSON.parse(xhr.responseText).error; } catch {} return fail(m); }
+      const { path } = JSON.parse(xhr.responseText);
+      try {
+        const l = await makeLink(path, slug, hours);
+        row.classList.add('done'); bar.style.width = '100%';
+        st.innerHTML = `<a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.url.replace(/^https?:\/\//, ''))}</a> <button data-copy="${esc(l.url)}">Copy</button>`;
+        copy(l.url);
+      } catch (e) { fail('Uploaded, but the link failed: ' + e.message); }
+      resolve();
+    };
+    xhr.send(file);
+  });
+}
+
+async function uploadAll(list) {
+  if (!list.length) return;
+  const slug = list.length === 1 ? $('#slug').value.trim() : '';
+  const hours = $('#expiry').value;
+  if (list.length > 1 && $('#slug').value.trim()) toast('Custom URL ignored for multiple files');
+  for (const f of list) await uploadOne(f, slug, hours);
+  $('#slug').value = '';
+  refresh();
+}
+
+const drop = $('#drop');
+drop.onclick = () => $('#picker').click();
+drop.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('#picker').click(); } };
+$('#picker').onchange = e => { uploadAll([...e.target.files]); e.target.value = ''; };
+['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', e => uploadAll([...e.dataTransfer.files]));
+window.addEventListener('dragover', e => e.preventDefault());
+window.addEventListener('drop', e => e.preventDefault());
+
+// ---- actions ----
+document.addEventListener('click', async e => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  try {
+    if (b.dataset.copy) copy(b.dataset.copy);
+    else if (b.dataset.open) window.open(b.dataset.open, '_blank', 'noopener');
+    else if (b.dataset.toggle) { await api('/api/links/' + encodeURIComponent(b.dataset.toggle), { method: 'PATCH', body: JSON.stringify({ disabled: b.dataset.off !== '1' }) }); refresh(); }
+    else if (b.dataset.del) { if (confirm('Delete this link? The file stays in the folder.')) { await api('/api/links/' + encodeURIComponent(b.dataset.del), { method: 'DELETE' }); refresh(); } }
+    else if (b.dataset.rm) { if (confirm(`Delete ${b.dataset.rm} from the folder? Its links stop working. This can't be undone.`)) { await api('/api/files?path=' + encodeURIComponent(b.dataset.rm), { method: 'DELETE' }); refresh(); } }
+    else if (b.dataset.share) openShare(b.dataset.share);
+  } catch (err) { if (err.message !== 'session') toast(err.message); }
+});
+
+let sharePath = '';
+function openShare(path) {
+  sharePath = path;
+  $('#sharepath').textContent = path;
+  $('#shareslug').value = ''; $('#shareexpiry').value = '0'; $('#shareerr').textContent = '';
+  $('#share').showModal();
+  $('#shareslug').focus();
+}
+$('#shareform').addEventListener('submit', async e => {
+  e.preventDefault();
+  $('#sharego').disabled = true;
+  try {
+    const l = await makeLink(sharePath, $('#shareslug').value.trim(), $('#shareexpiry').value);
+    $('#share').close(); copy(l.url); refresh();
+  } catch (err) { if (err.message !== 'session') $('#shareerr').textContent = err.message; }
+  finally { $('#sharego').disabled = false; }
+});
+
+$('#filter').oninput = renderFiles;
+
+(async () => {
+  try {
+    const me = await api('/api/me');
+    if (me.user) $('#user').textContent = 'Signed in as ' + me.user;
+    publicBase = me.public_url || '';
+    if (publicBase) { const p = publicBase.replace(/^https?:\/\//, '').replace(/\/$/, '') + '/'; $('#prefix').textContent = p; document.querySelectorAll('.pfx').forEach(x => x.textContent = p); }
+  } catch {}
+  refresh();
+})();
+</script>
+</body>
+</html>
