@@ -20,7 +20,7 @@
 <!-- Project meta -->
 ![License](https://img.shields.io/badge/License-GPL--2.0--or--later-8A2BE2?style=for-the-badge)
 [![Discord](https://img.shields.io/badge/Discord-Foxhearth-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/VGTaqW3vwn)
-[![foxhearth.com](https://img.shields.io/badge/foxhearth.com-home-E8702A?style=for-the-badge)](https://foxhearth.com)
+[![foxhearth.com](https://img.shields.io/badge/foxhearth.com-project_page-E8702A?style=for-the-badge)](https://foxhearth.com/projects/foxdrop)
 
 </div>
 
