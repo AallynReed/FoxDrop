@@ -22,9 +22,15 @@ use tokio::{io::AsyncWriteExt, sync::RwLock};
 use tower::ServiceExt;
 use tower_http::services::ServeFile;
 
-const RESERVED: &[&str] = &["admin", "api", "info", "healthz", "favicon.ico", "robots.txt", "static"];
+const RESERVED: &[&str] = &["admin", "api", "info", "healthz", "favicon.ico", "favicon.png", "icon.png", "robots.txt", "static"];
 const X_ROBOTS: header::HeaderName = header::HeaderName::from_static("x-robots-tag");
 const INDEX_HTML: &str = include_str!("index.html");
+const FAVICON: &[u8] = include_bytes!("favicon.png");
+const ICON: &[u8] = include_bytes!("icon-256.png");
+
+fn png(bytes: &'static [u8]) -> Response {
+    ([(header::CONTENT_TYPE, "image/png"), (header::CACHE_CONTROL, "public, max-age=86400")], bytes).into_response()
+}
 
 #[derive(Clone, Serialize, Deserialize)]
 struct Link {
@@ -250,7 +256,7 @@ fn content_disposition(path: &Path) -> HeaderValue {
     HeaderValue::from_str(&v).unwrap_or_else(|_| HeaderValue::from_static("attachment"))
 }
 
-const NOT_FOUND_HTML: &str = "<!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width'><title>Not found</title><style>body{font:16px system-ui,sans-serif;display:grid;place-items:center;min-height:90vh;color:#555;background:#fafafa}</style><p>This link doesn't exist or has expired.</p>";
+const NOT_FOUND_HTML: &str = "<!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width'><title>Not found</title><link rel=icon type=image/png href=/favicon.png><style>body{font:16px system-ui,sans-serif;display:grid;place-items:center;min-height:90vh;color:#555;background:#fafafa}</style><p>This link doesn't exist or has expired.</p>";
 
 fn not_found() -> Response {
     (StatusCode::NOT_FOUND, [(X_ROBOTS, "noindex")], Html(NOT_FOUND_HTML)).into_response()
@@ -370,6 +376,8 @@ fn public_router(app: Shared) -> Router {
         .route("/", get(|| async { not_found() }))
         .route("/healthz", get(|| async { "ok" }))
         .route("/robots.txt", get(|| async { "User-agent: *\nDisallow: /\n" }))
+        .route("/favicon.png", get(|| async { png(FAVICON) }))
+        .route("/icon.png", get(|| async { png(ICON) }))
         .route("/info/{slug}", get(info))
         .route("/{slug}", get(serve_slug).head(serve_slug))
         .fallback(|| async { not_found() })
@@ -614,6 +622,8 @@ fn admin_router(app: Shared) -> Router {
         .route("/", get(|| async { Redirect::to("/admin/") }))
         .route("/admin", get(|| async { Redirect::to("/admin/") }))
         .route("/admin/", get(index))
+        .route("/favicon.png", get(|| async { png(FAVICON) }))
+        .route("/icon.png", get(|| async { png(ICON) }))
         .route("/api/me", get(me))
         .route("/api/files", get(list_files).delete(delete_file))
         .route("/api/links", get(list_links).post(create_link))
